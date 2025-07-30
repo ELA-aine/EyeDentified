@@ -2,11 +2,16 @@ const openCameraBtn = document.getElementById('openCamera');
 const closeCameraBtn = document.getElementById('closeCamera');
 const takePictureBtn = document.getElementById('takePicture');
 const savePictureBtn = document.getElementById('savePicture');
+const generateButton = document.getElementById('generateButton')
+const descriptionElement = document.getElementById('description');
+const readAloudButton = document.getElementById('readAloudButton');
 const video = document.getElementById('camera');
 const canvas = document.getElementById('snapshot');
 const ctx = canvas.getContext('2d');
+const body = document.body;
 
 let stream = null;
+
 
 // Open Camera
 const openCamera = async () => {
@@ -18,6 +23,11 @@ const openCamera = async () => {
     openCameraBtn.disabled = true;
     closeCameraBtn.disabled = false;
     takePictureBtn.disabled = false;
+    let open_speech = new SpeechSynthesisUtterance();
+    open_speech.text = "Camera opened"
+    window.speechSynthesis.speak(open_speech);
+
+    body.style.backgroundImage = "url('./back.png')";
 
     // Flip the video feed horizontally using CSS
     video.style.transform = 'scaleX(-1)';
@@ -25,6 +35,10 @@ const openCamera = async () => {
     alert('Error accessing camera: ' + error.message);
   }
 };
+
+if (openCameraBtn.disabled == true) {
+  descriptionElement.innerHTML = 'Welcome to Our Project!'
+}
 
 // Close Camera
 const closeCamera = () => {
@@ -42,11 +56,16 @@ const closeCamera = () => {
     closeCameraBtn.disabled = true;
     takePictureBtn.disabled = true;
     savePictureBtn.disabled = true;
+
+    let close_speech = new SpeechSynthesisUtterance();
+    close_speech.text = "Camera closed"
+    window.speechSynthesis.speak(close_speech);
+    body.style.backgroundImage = "url('./back2.png')";
   }
 };
 
 // Take Picture
-const takePicture = () => {
+const takePicture = async () => {
   if (stream) {
     // Set canvas size to match the video feed
     canvas.width = video.videoWidth;
@@ -67,7 +86,40 @@ const takePicture = () => {
 
     savePictureBtn.disabled = false; // Enable the "Save Picture" button
     openCameraBtn.disabled = false;
-    closeCameraBtn.disabled = true;
+    closeCameraBtn.disabled = false;
+    body.style.backgroundImage = "url('./back2.png')";
+
+    let picture_speech = new SpeechSynthesisUtterance();
+    picture_speech.text = "Photo Taken"
+    window.speechSynthesis.speak(picture_speech);
+
+    descriptionElement.textContent = 'Generating description...';
+
+  try {
+    // Get the base64 image data from the canvas
+    const capturedImage = canvas.toDataURL('image/png');
+
+    // Send the image to the backend
+    const response = await fetch('http://127.0.0.1:5000/generate-description', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: capturedImage }),
+    });
+
+    // Handle the backend response
+    const data = await response.json();
+    if (data.error) {
+      descriptionElement.textContent = `Error: ${data.error}`;
+    } else {
+      descriptionElement.textContent = data.description; // Display the generated description
+      const utterance = new SpeechSynthesisUtterance(data.description);
+      window.speechSynthesis.speak(utterance);
+    }
+  } catch (error) {
+    descriptionElement.textContent = `Error: ${error.message}`;
+  }
   }
 };
 
@@ -79,6 +131,9 @@ const savePicture = () => {
     link.href = imageData; // Set the href to the image data
     link.download = 'captured-image.png'; // Set the filename for download
     link.click(); // Trigger a click event to download the image
+    let save_speech = new SpeechSynthesisUtterance();
+    save_speech.text = "Photo saved"
+    window.speechSynthesis.speak(save_speech);
   }
 };
 
@@ -107,3 +162,4 @@ document.addEventListener('keydown', (event) => {
       break;
   }
 });
+
